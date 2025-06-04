@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iPhone Information Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: #f5f5f7;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            height: 80vh;
+        }
+
+        h1 {
+            color: #1d1d1f;
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 2rem;
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background: #f8f8f8;
+            border-radius: 10px;
+        }
+
+        .message {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            border-radius: 10px;
+            max-width: 80%;
+        }
+
+        .user-message {
+            background: #0071e3;
+            color: white;
+            margin-left: auto;
+        }
+
+        .bot-message {
+            background: #e9e9eb;
+            color: #1d1d1f;
+        }
+
+        .bot-message :is(h1, h2, h3, h4, h5, h6) {
+            margin: 0.5em 0 0.2em 0;
+        }
+        .bot-message ul, .bot-message ol {
+            margin: 0.5em 0 0.5em 1.5em;
+        }
+        .bot-message table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 0.5em 0;
+            background: #fff;
+            font-size: 1em;
+            overflow-x: auto;
+            display: block;
+            max-width: 100%;
+        }
+        .bot-message th, .bot-message td {
+            border: 1px solid #bbb;
+            padding: 0.3em 0.7em;
+            text-align: left;
+            background: #f9f9f9;
+        }
+        .bot-message th {
+            background: #e0e0e0;
+            font-weight: bold;
+        }
+        .bot-message .table-responsive {
+            overflow-x: auto;
+            width: 100%;
+            display: block;
+        }
+        .bot-message a {
+            color: #0071e3;
+            text-decoration: underline;
+        }
+
+        .input-container {
+            display: flex;
+            gap: 1rem;
+            padding: 1rem;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #0071e3;
+        }
+
+        button {
+            background: #0071e3;
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background: #0077ed;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 1rem 0;
+            color: #666;
+        }
+
+        .error {
+            color: #ff3b30;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .welcome-message {
+            text-align: center;
+            color: #666;
+            margin-bottom: 1rem;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>iPhone Information Assistant</h1>
+        <div class="welcome-message">Ask me anything about the latest iPhones!</div>
+        <div class="chat-container" id="chatContainer">
+            <div class="message bot-message">
+                👋 Hi! I'm your iPhone information assistant. I can help you with:
+                <br>• Latest iPhone models and prices
+                <br>• Specifications and features
+                <br>• Comparisons between models
+                <br>• Release dates and updates
+                <br><br>What would you like to know?
+            </div>
+        </div>
+        <div class="input-container">
+            <input type="text" id="query" placeholder="Ask about iPhones...">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+        <div class="loading" id="loading">Thinking...</div>
+        <div class="error" id="error"></div>
+    </div>
+
+    <script>
+        function addMessage(message, isUser = false) {
+            const chatContainer = document.getElementById('chatContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+            if (isUser) {
+                messageDiv.textContent = message;
+            } else {
+                messageDiv.innerHTML = marked.parse(message);
+            }
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const query = document.getElementById('query').value;
+            const loadingDiv = document.getElementById('loading');
+            const errorDiv = document.getElementById('error');
+
+            if (!query) {
+                errorDiv.textContent = 'Please enter a question';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            addMessage(query, true);
+            document.getElementById('query').value = '';
+
+            loadingDiv.style.display = 'block';
+            errorDiv.style.display = 'none';
+
+            try {
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query: query })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    addMessage(data.response);
+                } else {
+                    errorDiv.textContent = data.error || 'An error occurred';
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Failed to connect to the server';
+                errorDiv.style.display = 'block';
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
+        }
+
+        document.getElementById('query').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html> 
